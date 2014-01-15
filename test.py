@@ -1,13 +1,25 @@
 import json
 
-jsonobj = {'FlagIDs': {'1':     {
-                                    'Flag': 'FlagName',
-                                    'Points': '100',
-                                 },
-                       }
-           }
-print ( json.dumps(jsonobj, indent=4, separators=(',',':')))
+f1 = 1
+f2 = 2
+jsonobj1 = []
+jsonobj1['flags'] = [f1, {'Flag': 'FlagName','Points': 100,}]
 
-jsonobj = {'2': {'Flag': 'FlagName2','Points': '200',},}
+sObj1 = str(jsonobj1)
 
-print ( json.dumps(jsonobj, indent=4, separators=(',',':')))
+print ('sObj1', sObj1 )
+
+dumpObj1 = json.dumps(sObj1)
+
+print ('dumpObj1', dumpObj1)
+
+data  = json.loads(dumpObj1)
+
+print ( 'data', data )
+
+data['flags'] = [f2, {'Flag': 'FlagName2','Points': '200',}]
+
+print ( 'data', data )
+
+
+

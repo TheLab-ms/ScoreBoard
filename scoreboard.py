@@ -92,8 +92,8 @@ def addTeam(hName, name):
             
     
 def updateTeam(hName, flag):
+    json_db = {}
     teams = []
-    newflags = []
     status = None
     #get flagID and points. If flagID not None continue else. error.  hName 0, name 1, flags 2, tPoints 3
     flagID, points = checkFlag(flag)
@@ -117,29 +117,27 @@ def updateTeam(hName, flag):
                         teams.append(row[0])
                         
                     if hName in teams:
-                        cur.execute("SELECT * FROM teams WHERE hName='%s'" % hName)
+                        cur.execute("SELECT * FROM teams WHERE hName=?", (hName,))
                         teamRow = cur.fetchone()
                         teamFlags = teamRow[2]
                         teamPoints = teamRow[3]
-                        
-                        if teamFlags == '0':
-                            newflags.append(str(flagID))
-                        else:
-                            for f in teamFlags:
-                                newflags.append(f)
-                                
-                            newflags.append(str(flagID))
+
+                        if teamFlags == 0:
+                            json_db['Flags'] = []
+                            json_db['Flags'].append( { 'FlagID': flagID, 'FlagName': flag, 'Points': points } )
+                        else: 
+                            jsonObj = json.dumps(teamFlags)
+                            json_flags = json.loads(jsonObj)
+                            print ( json_flags )
+                            json_db = json_flags
+                            print ( json.dumps( json_db, sort_keys=True, indent=4, separators=(',', ': ')) )
+                            json_db['Flags'].append( { 'FlagID': flagID, 'FlagName': flag, 'Points': points } )
+                            #print( 'TeamFlags %s, Type: %s' % (json_flags,type(json_flags)))
                         
                         teamPoints += points
-
-                        jsonobj = {'FlagIDs': {'FlagID': '1',
-                                                 'Flag': 'FlagName',
-                                                 'Points': '100',
-                                                 },
-                                     }
-                        
-                        print( "newflags: %s, teamPoints: %s, hName: %s " % (dbflags, teamPoints, hName))
-                        cur.execute("UPDATE teams SET flags=?,tPoints=? WHERE hName=?",(newflags,teamPoints, hName) )
+                     
+                        #print( "jsonflags: %s, teamPoints: %s, hName: %s " % (json_flags, teamPoints, hName))
+                        cur.execute("UPDATE teams SET flags=?,tPoints=? WHERE hName=?",(str(json_db),teamPoints, hName) )
                         status = "success"
                         return status
 
