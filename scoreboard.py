@@ -16,6 +16,8 @@ def main():
     #initialize the database with tables
     if not ctf:
         createDB()
+    updateSB()
+    '''
     answer = input( "add team? \n" )
     if answer == 'y':
         TeamName = input( "Enter TeamName \n" )
@@ -47,12 +49,15 @@ def main():
         status = updateTeam(hTeamName, flag)
         if status:
             print ( "Team %s was updated. \n" % (TeamName) )
+    '''
     
-
-
-def addTeam(hName, name):
+    
+def updateSB():
     try:
+        json_db = {}
+        json_db['Teams'] = []
         teams = []
+        highScore = 0
         status = None
         conn = sqlite3.connect('scoreboard.db')
 
@@ -61,19 +66,74 @@ def addTeam(hName, name):
 
             cur.execute("SELECT * FROM teams")
             rows = cur.fetchall()
-            #if table is empty no teams have been added go ahead and add team. 
+            for row in rows:
+                teams.append(row[0])
+            for hName in teams:
+                tableName = 'a'+hName
+                cur.execute("SELECT * FROM "+tableName)
+                teamRow = cur.fetchone() #hName TEXT, name TEXT, flagID INTEGER, flags TEXT, flagPoints INTEGER, tPoints INTEGER
+                team = {}
+                team['TeamHash'] = hName
+                team['TeamName'] = teamRow[1]
+                team['flagCount'] = teamRow[3]
+                team['teamPoints'] = teamRow[5]
+                team['Rank'] = 0
+                json_db['Teams'].append( team )
+            print( json.dumps(json_db, indent=4, separators=(',', ': ')) )
+            for x in range(0,len(teams)*2):
+                for k in json_db['Teams']:
+                    currentRank = k['Rank']
+                    if k['teamPoints'] > highScore:
+                        highScore = k['teamPoints']
+                        k['Rank'] = currentRank + 1
+                        
+            print( json.dumps(json_db, indent=4, separators=(',', ': ')) )
+                    
+
+
+                
+                
+    
+    except sqlite3.Error as e:
+        print ( "Error %s:" % e.args[0] )
+        sys.exit(1)
+
+    finally:
+        if conn:
+            conn.close()
+            
+def addTeam(hName, name):
+    try:
+        teams = []
+        tableName = 'a'+hName
+        status = None
+        conn = sqlite3.connect('scoreboard.db')
+
+        with conn:
+            cur = conn.cursor()
+
+            cur.execute("SELECT * FROM teams")
+            rows = cur.fetchall()
+            #if table is empty no teams have been added go ahead and add team.
             if not rows:
-                cur.execute("INSERT INTO teams VALUES (?, ?, ?, ?)", (hName, name, 0, 0))
+                cur.execute("INSERT INTO teams VALUES (?, ?)", (hName, name))
+                conn.commit()
+                createTeamDB(hName)
+                cur.execute("INSERT INTO "+tableName+" VALUES (?, ?, ?, ?, ?, ?)", (hName, name, 0, 0, 0, 0))
                 status = "success"
                 return status
 
             #Creates a list of all teams then it checks to see if hName is already in the database if not adds it. if so prints error msg.
+            #hName TEXT, name TEXT, flagID INTEGER, flags TEXT, flagPoints INTEGER, tPoints INTEGER
             else:
                 for row in rows:
                     teams.append(row[0])
                     
                 if hName not in teams:
-                    cur.execute("INSERT INTO teams VALUES (?, ?, ?, ?)", (hName, name, 0, 0))
+                    cur.execute("INSERT INTO teams VALUES (?, ?)", (hName, name))
+                    conn.commit()
+                    createTeamDB(hName)
+                    cur.execute("INSERT INTO "+tableName+" VALUES (?, ?, ?, ?, ?, ?)", (hName, name, 0, 0, 0, 0))
                     status = "success"
                     return status
 
@@ -92,10 +152,11 @@ def addTeam(hName, name):
             
     
 def updateTeam(hName, flag):
-    json_db = {}
     teams = []
+    flagIDs = []
+    tableName = 'a'+hName
     status = None
-    #get flagID and points. If flagID not None continue else. error.  hName 0, name 1, flags 2, tPoints 3
+    #get flagID and points. If flagID not None continue else. error. 
     flagID, points = checkFlag(flag)
     
     if flagID:
@@ -117,29 +178,32 @@ def updateTeam(hName, flag):
                         teams.append(row[0])
                         
                     if hName in teams:
-                        cur.execute("SELECT * FROM teams WHERE hName=?", (hName,))
+                        #Get current flag Count and Team Points. 
+                        cur.execute("SELECT * FROM "+tableName)
                         teamRow = cur.fetchone()
-                        teamFlags = teamRow[2]
-                        teamPoints = teamRow[3]
-
-                        if teamFlags == 0:
-                            json_db['Flags'] = []
-                            json_db['Flags'].append( { 'FlagID': flagID, 'FlagName': flag, 'Points': points } )
-                        else: 
-                            jsonObj = json.dumps(teamFlags)
-                            json_flags = json.loads(jsonObj)
-                            print ( json_flags )
-                            json_db = json_flags
-                            print ( json.dumps( json_db, sort_keys=True, indent=4, separators=(',', ': ')) )
-                            json_db['Flags'].append( { 'FlagID': flagID, 'FlagName': flag, 'Points': points } )
-                            #print( 'TeamFlags %s, Type: %s' % (json_flags,type(json_flags)))
                         
-                        teamPoints += points
+                        teamFlags = teamRow[3]
+                        teamPoints = teamRow[5]
+
+                        cur.execute("SELECT * FROM "+tableName)
+                        rows = cur.fetchall()
+                        for row in rows:
+                            flagIDs.append(row[2])
+                        #Check to see if flagID has been submitted before and awarded. 
+                        if flagID not in flagIDs:
+                            teamPoints += points
+                            #How many flags does the team have.
+                            hFlags = int(teamFlags) + 1
                      
-                        #print( "jsonflags: %s, teamPoints: %s, hName: %s " % (json_flags, teamPoints, hName))
-                        cur.execute("UPDATE teams SET flags=?,tPoints=? WHERE hName=?",(str(json_db),teamPoints, hName) )
-                        status = "success"
-                        return status
+                            #hName TEXT, name TEXT, flagID INTEGER, flags TEXT, flagPoints INTEGER, tPoints INTEGER
+                            cur.execute("UPDATE "+tableName+" SET flags=?,tPoints=? WHERE hName=?", (str(hFlags), teamPoints, hName)  )
+                            cur.execute("INSERT INTO "+tableName+" VALUES (?,?,?,?,?,?)", (0, 0, flagID, flag, points, 0) )
+                            status = "success"
+                            return status
+                        else:
+                            print ( "Flag has already been submitted" )
+                            status = "Fail"
+                            return status
 
                     else:
                         print ( "Team not registered in database. Please check the spelling or register new team and try again. " )
@@ -236,7 +300,19 @@ def checkFlag(flag):
         if conn:
             conn.close()
 
-        
+def createTeamDB(tableName):
+    tableName = 'a'+tableName
+    conn = sqlite3.connect('scoreboard.db')
+    cur = conn.cursor()
+
+
+    #create table teams and data names/types 
+    cur.execute('CREATE TABLE IF NOT EXISTS '+tableName+' (hName TEXT, name TEXT, flagID INTEGER, flags TEXT, flagPoints INTEGER, tPoints INTEGER)' ) 
+    
+    conn.commit()
+    cur.close()
+    conn.close()
+    
 def createDB():
 
     conn = sqlite3.connect('scoreboard.db')
@@ -248,9 +324,9 @@ def createDB():
 
     #create table teams and data names/types 
     cur.execute('''CREATE TABLE IF NOT EXISTS teams
-                 (hName TEXT, name TEXT, flags BLOB, tPoints INTEGER)''')
+                 (hName TEXT, name TEXT)''')
 
-    #create table teams and data names/types 
+    #create table scoreboard and data names/types 
     cur.execute('''CREATE TABLE IF NOT EXISTS scoreboard
                  (hName TEXT, name TEXT, points INTEGER, place INTEGER)''')
     
