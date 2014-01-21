@@ -17,7 +17,7 @@ def main():
     if not ctf:
         createDB()
     updateSB()
-    '''
+    
     answer = input( "add team? \n" )
     if answer == 'y':
         TeamName = input( "Enter TeamName \n" )
@@ -49,7 +49,7 @@ def main():
         status = updateTeam(hTeamName, flag)
         if status:
             print ( "Team %s was updated. \n" % (TeamName) )
-    '''    
+        
     
 def updateSB():
     try:
@@ -86,13 +86,9 @@ def updateSB():
             for k in json_db['Teams']:
                 k['Rank'] = int(hs.index(k['teamPoints'])) + 1 
                         
-            print( json.dumps(json_db, indent=4, separators=(',', ': ')) )
+            #print( json.dumps(json_db, indent=4, separators=(',', ': ')) )
             return json_db
-                    
-
-
-                
-                
+    
     
     except sqlite3.Error as e:
         print ( "Error %s:" % e.args[0] )
@@ -211,7 +207,8 @@ def updateTeam(hName, flag):
 
         except sqlite3.Error as e:
             print ( "Error %s:" % e.args[0] )
-            sys.exit(1)
+            #sys.exit(1)
+            return None
 
         finally:
             if conn:
