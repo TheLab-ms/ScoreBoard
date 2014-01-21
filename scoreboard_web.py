@@ -1,8 +1,26 @@
 import cherrypy
 import datetime
-import ScoreBoard as SB
+import scoreboard as SB
+import json
 
 class Root(object):
+    @cherrypy.expose
+    def scoreboard(self):
+        """Display Scoreboad every 5mins"""
+        json_db = SB.updateSB()
+        for k in json_db['Teams']:
+            
+            
+        
+        return '''
+<html>
+<body>
+<p> Scores: %s </p>
+</body>
+</html>
+''' % (json_db)
+
+    
     @cherrypy.expose
     def Register(self, TeamName=None, Flag=None):
         """Check the TeamName & Flag"""
