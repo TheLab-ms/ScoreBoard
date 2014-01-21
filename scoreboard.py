@@ -49,15 +49,14 @@ def main():
         status = updateTeam(hTeamName, flag)
         if status:
             print ( "Team %s was updated. \n" % (TeamName) )
-    '''
-    
+    '''    
     
 def updateSB():
     try:
         json_db = {}
         json_db['Teams'] = []
         teams = []
-        highScore = 0
+        hs = []
         status = None
         conn = sqlite3.connect('scoreboard.db')
 
@@ -79,15 +78,16 @@ def updateSB():
                 team['teamPoints'] = teamRow[5]
                 team['Rank'] = 0
                 json_db['Teams'].append( team )
-            print( json.dumps(json_db, indent=4, separators=(',', ': ')) )
-            for x in range(0,len(teams)*2):
-                for k in json_db['Teams']:
-                    currentRank = k['Rank']
-                    if k['teamPoints'] > highScore:
-                        highScore = k['teamPoints']
-                        k['Rank'] = currentRank + 1
+
+            for k in json_db['Teams']:
+                hs.append(k['teamPoints'])
+            #sort hs. then go through list if hs equals teamPoints take index as place. 
+            hs = sorted(hs, reverse=True)
+            for k in json_db['Teams']:
+                k['Rank'] = int(hs.index(k['teamPoints'])) + 1 
                         
             print( json.dumps(json_db, indent=4, separators=(',', ': ')) )
+            return json_db
                     
 
 
